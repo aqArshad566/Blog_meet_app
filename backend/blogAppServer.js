@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
+const connectDB = require('./db');
 
 const app = express();
 app.use(bodyParser.json());
@@ -29,10 +30,6 @@ const User = mongoose.model('User', UserSchema);
 const Blog = mongoose.model('Blog', BlogSchema);
 const Comment = mongoose.model('Comment', CommentSchema);
 
-const blogs = [];
-const comments = [];
-const users = [{ id: 1, username: 'user1', password: 'password1' }];
-
 const secretKey = 'your_secret_key';
 
 // Middleware to authenticate JWT token
@@ -47,41 +44,43 @@ function authenticateToken(req, res, next) {
     });
 }
 
-app.post('/signup', (req, res) => {
+// Endpoint to sign up a new user
+app.post('/signup', async (req, res) => {
     const { username, password } = req.body;
-    if (users.find(u => u.username === username)) {
-        return res.status(400).json({ message: 'User already exists' });
+    try {
+        const newUser = new User({ username, password });
+        await newUser.save();
+        res.status(201).json({ message: 'User created successfully' });
+    } catch (err) {
+        res.status(400).json({ message: 'User already exists' });
     }
-    const newUser = { id: users.length + 1, username, password };
-    users.push(newUser);
-    res.status(201).json({ message: 'User created successfully' });
 });
 
 // Endpoint to login and get a token
-app.post('/login', (req, res) => {
+app.post('/login', async (req, res) => {
     const { username, password } = req.body;
-    const user = users.find(u => u.username === username && u.password === password);
+    const user = await User.findOne({ username, password });
     if (!user) return res.sendStatus(403);
 
-    const token = jwt.sign({ id: user.id, username: user.username }, secretKey);
+    const token = jwt.sign({ id: user._id, username: user.username }, secretKey);
     res.json({ token });
 });
 
 // Endpoint to create a new blog
-app.post('/blogs', authenticateToken, (req, res) => {
-    const blog = { id: blogs.length + 1, userId: req.user.id, title: req.body.title, content: req.body.content };
-    blogs.push(blog);
+app.post('/blogs', authenticateToken, async (req, res) => {
+    const blog = new Blog({ userId: req.user.id, title: req.body.title, content: req.body.content });
+    await blog.save();
     res.status(201).json(blog);
 });
 
 // Endpoint to add a comment to a blog
-app.post('/blogs/:blogId/comments', authenticateToken, (req, res) => {
-    const blogId = parseInt(req.params.blogId);
-    const blog = blogs.find(b => b.id === blogId);
+app.post('/blogs/:blogId/comments', authenticateToken, async (req, res) => {
+    const blogId = req.params.blogId;
+    const blog = await Blog.findById(blogId);
     if (!blog) return res.sendStatus(404);
 
-    const comment = { id: comments.length + 1, blogId: blog.id, userId: req.user.id, content: req.body.content };
-    comments.push(comment);
+    const comment = new Comment({ blogId: blog._id, userId: req.user.id, content: req.body.content });
+    await comment.save();
     res.status(201).json(comment);
 });
 

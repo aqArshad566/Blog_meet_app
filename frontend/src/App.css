@@ -40,3 +40,28 @@
 .read-the-docs {
   color: #888;
 }
+
+.app-container {
+  min-height: 100vh;
+  background-color: #f0f0f0;
+}
+
+.app-nav {
+  background-color: #007bff;
+  padding: 10px;
+  text-align: center;
+}
+
+.nav-link {
+  margin: 0 10px;
+  color: white;
+  text-decoration: none;
+}
+
+.nav-link:hover {
+  text-decoration: underline;
+}
+
+.app-content {
+  padding: 20px;
+}
